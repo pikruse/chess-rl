@@ -1,3 +1,4 @@
+import re
 
 def create_move_list(s):
 
@@ -11,4 +12,4 @@ def create_move_list(s):
         moves (list): list of moves
     """
 
-    moves = re.
+    moves = re.sub('\d*\. ', '', s).split(' ')[:-1]
