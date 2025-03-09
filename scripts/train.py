@@ -3,6 +3,7 @@ import chess
 import wandb
 import numpy as np
 from tqdm.auto import tqdm
+from dotenv import load_dotenv
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,6 +14,9 @@ sys.path.append('../')
 # custom imports
 from utils.env import *
 from utils.model import *
+
+load_dotenv()
+os.environ['WANDB_API_KEY'] = os.getenv('WANDB_API_KEY')
 
 class ChessTrainer:
 
@@ -124,7 +128,7 @@ if __name__ == '__main__':
     # play 1000 games
     for i in range(1000):
         loss, avg_reward = trainer.train_step()
-        print(f'Iteration {i}, Loss: {loss}', end='\r')
+        print(f'Iteration {i} | Loss: {loss} | Avg. Reward', end='\r')
         wandb.log({'iteration': i, 'loss': loss, 'avg_reward': avg_reward})
     
     # save model
