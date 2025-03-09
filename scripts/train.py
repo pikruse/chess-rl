@@ -9,5 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 sys.path.append('../')
 
 # custom imports
-from utils.dataset import *
+from utils.env import *
 from utils.model import *
+
+class ChessTrainer:
+    pass

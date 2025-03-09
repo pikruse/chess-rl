@@ -47,7 +47,7 @@ class ChessEnv:
         """
 
         # init mask
-        mask = np.zeros(4672, dtype=np.float32) # why 4672?
+        mask = np.zeros(4672, dtype=np.float32) # 8 x 8 x 73 = 4672 (73 possible moves per square)
 
         # loop through legal moves to fill in mask
         for move in self.board.legal_moves:
