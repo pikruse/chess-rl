@@ -123,13 +123,13 @@ if __name__ == '__main__':
     trainer = ChessTrainer()
 
     # init wandb for tracking
-    wandb.init(project='chess-rl')
+    # wandb.init(project='chess-rl')
 
     # play 1000 games
     for i in range(1000):
         loss, avg_reward = trainer.train_step()
         print(f'Iteration {i} | Loss: {loss} | Avg. Reward', end='\r')
-        wandb.log({'iteration': i, 'loss': loss, 'avg_reward': avg_reward})
+        # wandb.log({'iteration': i, 'loss': loss, 'avg_reward': avg_reward})
     
     # save model
     torch.save(trainer.model.state_dict(), 'model.pth')
