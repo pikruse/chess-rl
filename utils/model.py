@@ -4,6 +4,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+# res block
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.BatchNorm2d(channels)
+        )
+    
+    def forward(self, x):
+        return F.relu(x + self.conv(x))
+
+# chess network
 class ChessNet(nn.Module):
     """
     simple chess network - conv + policy head + value head
@@ -14,23 +30,19 @@ class ChessNet(nn.Module):
 
         # convolutional block
         self.conv_block = nn.Sequential(
-            nn.Conv2d(14, 256, padding=1),
+            nn.Conv2d(15, 256, 3, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(),
-            nn.Conv2d(256, 256, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.Conv2d(256, 256, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU()
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
         )
         
         # policy head - what move to make?
         self.policy_head = nn.Sequential(
             # convert channels to 73 (num squares + num promotions)
             nn.Conv2d(256, 73, kernel_size=1),
-            nn.Flatten(),
-            nn.Linear(73*8*8, 4672) # 8 x 8 x 73 = 4672
+            nn.Flatten(start_dim=1) # keep spatial dimension
         )
 
         # value head - who is winning?
@@ -39,8 +51,7 @@ class ChessNet(nn.Module):
             nn.Flatten(),
             nn.Linear(8*8, 256),
             nn.ReLU(),
-            nn.Linear(256, 1),
-            nn.Tanh()
+            nn.Linear(256, 1)
         )
 
     def forward(self, x):
