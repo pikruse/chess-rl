@@ -28,10 +28,12 @@ class ChessTrainer:
         self.losses = 0
 
         self.model = ChessNet()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=1000
-            )
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=3e-4)
+        self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            self.optimizer, 
+            max_lr=1e-3,
+            total_steps=1000
+        )
         self.gamma = 0.99
         
         # device mgmt
@@ -171,7 +173,7 @@ class ChessTrainer:
         self.optimizer.step()
 
         # clip gradients
-        nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+        nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
         
         avg_reward = np.mean(rewards.numpy())
 
@@ -191,31 +193,54 @@ if __name__ == '__main__':
     # init trainer
     trainer = ChessTrainer()
     win_rates = []
+    metrics = {
+        'loss': 0.0,
+        'v_loss': 0.0,
+        'p_loss': 0.0,
+        'avg_r': 0.0,
+        'win_rate': 0.0
+    }
+    
+    # Initial evaluation
     win_rate = trainer.evaluate_vs_random(num_games=20)
-
-    # init wandb for tracking
-    wandb.init(project='chess-rl')
-
-    # play 1000 games
-    for i in range(1000):
-        loss, value_loss, policy_loss, avg_reward = trainer.train_step()
-        
-        # store win rates for plotting
-        if i % 100 == 0:
-            current_win_rate = trainer.evaluate_vs_random(num_games=20)
-            win_rates.append(win_rate)
-            win_rate = current_win_rate
+    win_rates.append(win_rate)
 
 
-        print(f'\r\033[KIteration {i} | '
-              f'Total Loss: {loss:.4f} | '
-              f'Value Loss: {value_loss:.4f} | '
-              f'Policy Loss: {policy_loss:.4f} | ' 
-              f'Win Rate: {win_rate:.2%} | '
-              f'Avg. Reward: {avg_reward:.4f}', end='', flush=True)
-        wandb.log({'iteration': i, 'loss': loss, 'policy_loss': policy_loss, 'value_loss': value_loss, 'win_rate': win_rate, 'avg_reward': avg_reward})
-
-
-    # save model
-    torch.save(trainer.model.state_dict(), 'model.pth')
-    wandb.finish()
+    pbar = tqdm(total=1000, desc="Training", 
+                postfix=metrics, bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
+    
+    with wandb.init(project='chess-rl'):
+        # play 1000 games
+        for i in range(1000):
+            loss, value_loss, policy_loss, avg_reward = trainer.train_step()
+            
+            # Update metrics
+            metrics.update({
+                'loss': f"{loss:.4f}",
+                'v_loss': f"{value_loss:.4f}",
+                'p_loss': f"{policy_loss:.4f}",
+                'avg_r': f"{avg_reward:.4f}",
+                'win_rate': f"{win_rate:.2%}"
+            })
+            
+            # Evaluation every 100 iterations
+            if i % 100 == 0 and i != 0:
+                current_win_rate = trainer.evaluate_vs_random(num_games=20)
+                win_rates.append(current_win_rate)
+                win_rate = current_win_rate
+            
+            # Update progress bar
+            pbar.set_postfix(metrics)
+            pbar.update(1)
+            
+            # Wandb logging
+            wandb.log({
+                'iteration': i,
+                'loss': loss,
+                'policy_loss': policy_loss,
+                'value_loss': value_loss,
+                'win_rate': win_rate,
+                'avg_reward': avg_reward
+            })
+            
+        pbar.close()
